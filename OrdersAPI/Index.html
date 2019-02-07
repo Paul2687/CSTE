@@ -1,0 +1,345 @@
+﻿
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Order Engine</title>
+    <link rel="stylesheet" href="/Content/jquery-ui.css">
+    <style>
+        span {
+            color: red
+        }
+
+        form {
+            border-radius: 2px;
+            padding: 20px 30px;
+            box-shadow: 0 0 15px;
+            font-size: 14px;
+            font-weight: bold;
+            width: 90%;
+            margin: 20px 20px 20px 20px;
+            float: left;
+            align-content: center;
+        }
+
+        select {
+            height: 30px;
+            margin: 5px;
+            border: 1px solid #999;
+            border-radius: 3px;
+            padding: 5px;
+            width: 150px;
+        }
+
+        input {
+            height: 20px;
+            margin: 5px;
+            border: 1px solid #999;
+            border-radius: 3px;
+            padding: 5px;
+            width: 150px;
+        }
+
+        label {
+            width: 100px;
+            height: 25px;
+            margin-right: 5px;
+            display: inline-block;
+        }
+
+        input[type=button] {
+            background-color: #123456;
+            border: 1px solid white;
+            margin-left: 60px;
+            font-family: 'Fauna One', serif;
+            font-Weight: bold;
+            font-size: 16px;
+            color: white;
+            align-content: center;
+            height: 30px;
+        }
+        input[type=button]:disabled {
+                border: 1px solid white;
+                background-color: #cccccc;
+                color: #666666;
+            }
+        label.error {
+            font-weight: normal;
+            color: red;
+            white-space: nowrap;
+        }
+
+        table.paleBlueRows {
+            font-family: "Times New Roman", Times, serif;
+            border: 1px solid #FFFFFF;
+            width: 350px;
+            text-align: center;
+            border-collapse: collapse;
+        }
+
+        table.paleBlueRows td, table.paleBlueRows th {
+                border: 1px solid #FFFFFF;
+                padding: 3px 2px;
+            }
+
+        table.paleBlueRows tbody td {
+                font-size: 13px;
+                color: #123456;
+            }
+
+        table.paleBlueRows tr:nth-child(even) {
+                background: #D0E4F5;
+            }
+
+        table.paleBlueRows thead {
+                background: #123456;
+                border-bottom: 5px solid #FFFFFF;
+            }
+
+        table.paleBlueRows thead th {
+                    font-size: 16px;
+                    font-weight: bold;
+                    font-family: 'Fauna One', serif;
+                    color: #FFFFFF;
+                    text-align: center;
+                    border-left: 2px solid #FFFFFF;
+                    height: 25px;
+                }
+
+        table.paleBlueRows thead th:first-child {
+                        border-left: none;
+                    }
+
+        table.paleBlueRows tfoot td {
+                font-size: 14px;
+            }
+    </style>
+</head>
+<body>
+
+    <form id="orderform">
+        <h2>OrderEngine</h2>
+        <label>StockId: <span>*</span></label>
+        <select id="StockIdList"></select> <br />
+        <label>Order Direction: <span>*</span></label>
+        <select id="slc_dir">
+            <option value="1">BUY</option>
+            <option value="2">SELL</option>
+        </select> <br />
+        <label>Quantity: <span>*</span></label>
+        <input type="number" id="txt_qty" placeholder="0" min="1" /><br />
+        <label>Price: <span>*</span></label>
+        <input type="number" id="txt_price" placeholder="0.00" min="0.01" /><br />
+        <input type="button" id="btn_sub" value="Submit" disabled="disabled" onclick="SubmitOrder();" />
+
+    </form>
+
+    <form id="getform">
+        <h2>Trade List</h2>
+        <label>SearchItem: <span>*</span></label>
+        <select id="src_StockList"></select>
+        <input type="button" value="Search" onclick="find();" />
+        <br /><br />
+        <table id="tblres" class="paleBlueRows">
+
+            <thead>
+
+                <tr>
+
+                    <th>BuyRequestId</th>
+
+                    <th>SellRequestId</th>
+
+                    <th>Quantity</th>
+
+                    <th>Price</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="tblbdy"></tbody>
+
+        </table>
+    </form>
+
+    <script src="/Scripts/jquery-3.3.1.min.js"></script>
+
+    <script src="Scripts/jquery-ui.js"></script>
+
+    <script src="/Scripts/jquery.validate.min.js"></script>
+    <script>
+        var stocksuri = 'api/stocks';
+        var Ordersuri = 'api/submit';
+        var tradesuri = 'api/trades';
+
+        $(document).ready(function () {
+
+            //Form Validation
+
+            $('#orderform').validate({
+
+                rules: {
+
+                    'txt_qty': {
+
+                        required: true,
+
+                        digits: true
+
+                    },
+
+                    'txt_price': {
+
+                        required: true,
+
+                    }
+
+                },
+
+                messages: {
+
+                    'txt_qty': {
+
+                        required: " Please enter valid quantity",
+
+                        digits: "Please enter quantity in Multiple of 1"
+
+                    },
+
+                    'txt_price': {
+
+                        required: " Please enter valid price"
+
+                    }
+
+                },
+
+            });
+
+            $('#orderform input').on('keyup blur', function () {
+
+                if ($('#orderform').valid()) { // checks form for validity
+
+                    $('#btn_sub').removeClass('button_disabled').prop('disabled', false); // enables button
+
+                } else {
+
+                    $('#btn_sub').addClass('button_disabled').prop('disabled', true); // disables button
+
+                }
+
+            });
+
+
+            // Send an AJAX request
+            $.getJSON(stocksuri)
+                .done(function (data) {
+                    // On success, 'data' contains a list of Tickers.
+                    $.each(data, function (key, item) {
+                        // Add a list item for the Ticker.
+                        formatItem(item);
+                    });
+                });
+        });
+
+        //Add the ticker items to the Dropdowns
+        function formatItem(item) {
+            $("#StockIdList").append($("<option/>", {
+                value: item.StockID,
+                text: item.StockName
+            }));
+            $("#src_StockList").append("<option value='" + item.StockID + "'>" + item.StockName + "</option>");
+        }
+
+        //populate the html table
+        function pretblrows(item) {
+
+            return "<tr><td>" + item.BuyRequestID + "</td><td>" + item.SellRequestID + "</td><td>" + item.ExecutionQuantity + "</td><td>" + item.ExecutionPrice + "</td></tr>"
+
+        }
+
+        function find() {
+
+            $("#tblbdy").empty();
+
+           var tbldt = "";
+            var id = $('#src_StockList').val();
+            $.getJSON(tradesuri + '/' + id)
+                .done(function (data) {
+                    $.each(data, function (key, item) {
+
+                        tbldt += pretblrows(item);
+
+                    });
+
+                    $("#tblbdy").append(tbldt);
+                })
+                .fail(function (jqXHR, textStatus, err) {
+                    UpdateUser("Error", err);
+                });
+        }
+
+        
+
+        function SubmitOrder() {
+
+            var slc_stockid = $('#StockIdList').val();
+            var slc_stock = $("#StockIdList option:selected").text();
+            var qty = $('#txt_qty').val();
+            var price = $('#txt_price').val();
+            var ordside = $("#slc_dir option:selected").text();
+
+            
+            $.post(Ordersuri, { StockId: slc_stockid, Quantity: qty, Price: price, OrderSide: ordside, StockName: slc_stock})
+
+                .done(function (data) {
+
+                    UpdateUser( "confirmation",'Order Submitted Successfully. Order Reference ID # '+data.RequestId);
+                    $('#orderform').trigger("reset");
+
+                })
+                .fail(
+                function (jqXHR, textStatus, errorThrown) {
+                    UpdateUser("Error", jqXHR.responseText);
+                    });
+            
+
+           
+
+        }
+
+        function UpdateUser(title, mesg) {
+
+            $('<div></div>').dialog({
+
+                modal: true,
+
+                title: title,
+
+                open: function () {
+
+                    
+
+                    $(this).html(mesg);
+
+                },
+
+                buttons: {
+
+                    Ok: function () {
+
+                        $(this).dialog("close");
+
+                    }
+
+                }
+
+            });
+
+        }
+    </script>
+</body>
+</html>
+
+
+
