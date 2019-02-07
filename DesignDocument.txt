@@ -1,0 +1,30 @@
+Trading Platform is contains 3 Project
+
+          1. Trading Common Project: 
+				Contains the models and the Classes for DB and Queue Handling
+	 2.Orders API : 
+			Contains the Web API end points to get the stock list, Submit the orders and to retrieve the list of executed trades
+			index.html has the forms to post the orders and to retrieve th executed trades
+	3.Execution Engine :
+			It contains the business logics of Matching engine and the order processing
+
+Workflow:
+
+Database path should be updated in the web.config of orders API and the APP.config of the execution engine to the destination location.. Currently Sqlite db is kept in the database folder
+
+Execution engine should be started first and running before posting the trades to create the MSMQ first time.
+
+When an order is submitted to the submit endpoint a requestID will be assigned to the order and it will be inserted into the MSMQ. And the requestID will be sent back as a response.
+
+Once the order is posted in the MSMQ. OrderMsgQueue_ReceiveCompleted method in the OrderQueueProcessor class will be called and the order will be processed. 
+Once the order is persisted in the Sqlite DB the matching engine will look for the respective matching order. if there are any then the available quanity in the order 
+table will be updated and the trade will be inserted in the Tbl_trades
+
+Using the search button , we can retrieve all the executed trades for the Ticker.
+
+Database access is coded agaianst the interface to handle the different DB providers 
+
+
+
+
+     
